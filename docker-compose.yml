@@ -4,13 +4,12 @@ services:
     container_name: sub-proxy
     restart: unless-stopped
     ports:
-      # 冒号左侧为主机端口，按需修改（默认 25500）
       - "25500:25500"
     environment:
-      # 上游订阅链接（请替换为你的真实链接）
-      - UPSTREAM_URL=https://example.com/sub/token
+      # 可选。使用路径转发（http://proxy:25500/<上游链接>）时可省略
+      - UPSTREAM_URL=
       # 自定义 User-Agent
-      - CUSTOM_UA=v2rayN/7.24.4
+      - CUSTOM_UA=clash-verge/v2.5.3
       # 日志级别: DEBUG / INFO / WARNING / ERROR
       - LOG_LEVEL=INFO
     # 如果订阅链接是自签名证书，取消下面注释

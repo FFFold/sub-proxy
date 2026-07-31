@@ -40,20 +40,25 @@ class ProxyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         logging.info(f"← 收到请求: {self.path}")
 
-        # 构造转发请求头
+        path = self.path.lstrip("/")
+        if path.startswith("http://") or path.startswith("https://"):
+            upstream_url = path.split("#")[0]
+            logging.info(f"  从路径提取上游: {upstream_url}")
+        else:
+            upstream_url = self.upstream_url
+
         headers = {k: v for k, v in self.headers.items()}
         headers["User-Agent"] = self.custom_ua
 
-        # 解析上游 URL 设置 Host
-        parsed = urlparse(self.upstream_url)
+        parsed = urlparse(upstream_url)
         headers["Host"] = parsed.netloc
 
         try:
-            logging.info(f"→ 转发至: {self.upstream_url}")
+            logging.info(f"→ 转发至: {upstream_url}")
             logging.info(f"   User-Agent: {self.custom_ua}")
 
             resp = requests.get(
-                self.upstream_url,
+                upstream_url,
                 headers=headers,
                 timeout=60,
                 verify=self.verify_ssl,
@@ -61,10 +66,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
             logging.info(f"← 上游响应: {resp.status_code} ({len(resp.content)} bytes)")
 
-            # 返回上游响应
             self.send_response(resp.status_code)
 
-            # 过滤 hop-by-hop 头部
             hop_by_hop = {
                 "connection", "transfer-encoding", "keep-alive",
                 "proxy-authenticate", "proxy-authorization",
@@ -72,7 +75,6 @@ class ProxyHandler(BaseHTTPRequestHandler):
             }
             for k, v in resp.headers.items():
                 if k.lower() not in hop_by_hop:
-                    # 修正 Content-Location/Content-Encoding 相关的问题
                     self.send_header(k, v)
 
             self.end_headers()
@@ -119,7 +121,7 @@ def parse_args():
     parser.add_argument(
         "--upstream", "-u",
         default=os.environ.get("UPSTREAM_URL", ""),
-        help="上游订阅链接 (默认: 测试用 httpbin.org/headers)",
+        help="默认上游订阅链接。请求路径包含 http(s):// 时自动路由到路径中的链接",
     )
     parser.add_argument(
         "--ua", "-a",
@@ -163,12 +165,12 @@ def main():
     logging.info("=" * 60)
     logging.info("  订阅链接 UA 转发代理已启动")
     logging.info(f"  监听地址: http://0.0.0.0:{args.port}")
-    logging.info(f"  上游链接: {upstream}")
+    logging.info(f"  默认上游: {upstream}")
     logging.info(f"  自定义 UA: {args.ua}")
     logging.info(f"  SSL 验证: {'关闭' if args.no_verify_ssl else '开启'}")
     logging.info("=" * 60)
-    logging.info("在 daed 中设置订阅地址为:")
-    logging.info(f"  http://127.0.0.1:{args.port}/")
+    logging.info("任意上游用法 (直接将链接拼在路径中):")
+    logging.info(f"  http://127.0.0.1:{args.port}/<https://your-upstream-url>")
     logging.info("")
     logging.info("按 Ctrl+C 停止服务器")
 
