@@ -1,13 +1,14 @@
 services:
   sub-proxy:
-    image: sub-proxy
+    image: ghcr.io/fffold/sub-proxy
     container_name: sub-proxy
     restart: unless-stopped
     ports:
-      - "自定义端口:25500"
+      # 冒号左侧为主机端口，按需修改（默认 25500）
+      - "25500:25500"
     environment:
       # 上游订阅链接（请替换为你的真实链接）
-      - UPSTREAM_URL=https://订阅链接/sub/token
+      - UPSTREAM_URL=https://example.com/sub/token
       # 自定义 User-Agent
       - CUSTOM_UA=v2rayN/7.24.4
       # 日志级别: DEBUG / INFO / WARNING / ERROR
